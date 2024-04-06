@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "variant": "cpp",
-        "thread": "cpp",
-        "atomic": "cpp",
-        "memory": "cpp",
-        "cmath": "cpp"
-    }
-}
