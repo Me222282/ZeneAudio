@@ -9,7 +9,7 @@ project(AudioBackend CXX)
 # target_include_directories(main PRIVATE ./)
 
 # windows test
-add_executable(main main.cpp wasapiSystem.cpp system.h)
+add_executable(main main.cpp wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
 
 # linux test
 # add_executable(main linuxTest.cpp)

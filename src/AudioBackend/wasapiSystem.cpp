@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <audioclient.h>
 #include <audiopolicy.h>
 #include <mmdeviceapi.h>
@@ -34,11 +35,11 @@ typedef struct
     IMMDevice* _source;
     std::string _name;
     std::wstring _id;
-} audioOutDevice;
+} audioDevice;
 
 typedef struct
 {
-    audioOutDevice* _device;
+    audioDevice* _device;
     WAVEFORMATEXTENSIBLE* _format;
     IAudioClient* _client;
     IAudioRenderClient* _rc;
@@ -51,12 +52,25 @@ typedef struct
 
 typedef struct
 {
-    audioOutDevice* _device_render_default;
-    IMMDevice* _device_capture_default;
+    audioDevice* _device;
+    WAVEFORMATEXTENSIBLE* _format;
+    IAudioClient* _client;
+    IAudioCaptureClient* _cc;
+    HANDLE _event;
+    uint32_t _blockSize;
+    bool _running;
+    readBuffer* _buffer;
+    std::thread _thread;
+} audioReader;
 
-    audioOutDevice** _device_render_array;
+typedef struct
+{
+    audioDevice* _device_render_default;
+    audioDevice* _device_capture_default;
+
+    audioDevice** _device_render_array;
     int _device_render_count;
-    IMMDevice** _device_capture_array;
+    audioDevice** _device_capture_array;
     int _device_capture_count;
 } deviceInitialiser;
 
@@ -73,7 +87,7 @@ uint16_t getASNumChannels(void* audioSys)
     return ((audioSystem*)audioSys)->_format->Format.nChannels;
 }
 
-void threadFunction(IAudioClient* client, IAudioRenderClient* iarc, audioCallback callback, UINT blockSize, uint32_t channels, uint32_t* current)
+void threadFunction(IAudioClient* client, IAudioRenderClient* iarc, audioCallback callback, UINT blockSize, uint32_t channels)
 {
     if (!callback) { return; }
     
@@ -87,8 +101,7 @@ void threadFunction(IAudioClient* client, IAudioRenderClient* iarc, audioCallbac
     iarc->GetBuffer(num_frames_available, &data);
     if (data == NULL) { return; }
     
-    callback(reinterpret_cast<float*>(data), num_frames_available, channels, *current);
-    *current += num_frames_available;
+    callback(reinterpret_cast<float*>(data), num_frames_available, channels);
     
     iarc->ReleaseBuffer(num_frames_available, 0);
 }
@@ -108,8 +121,7 @@ bool startAS(void* audioSys)
 
         while (sys->_running)
         {
-            uint32_t current;
-            threadFunction(sys->_client, sys->_rc, sys->_callback, sys->_blockSize, sys->_format->Format.nChannels, &current);
+            threadFunction(sys->_client, sys->_rc, sys->_callback, sys->_blockSize, sys->_format->Format.nChannels);
             
             // Wait
             WaitForSingleObject(sys->_event, INFINITE);
@@ -156,7 +168,7 @@ void fixup_format(WAVEFORMATEXTENSIBLE* format)
 void* createAudioSystem(void* outputDevice, uint32_t blockSize)
 {
     audioSystem* sys = new audioSystem();
-    sys->_device = (audioOutDevice*)outputDevice;
+    sys->_device = (audioDevice*)outputDevice;
     
     HRESULT hr;
     IMMDevice* device = sys->_device->_source;
@@ -170,11 +182,13 @@ void* createAudioSystem(void* outputDevice, uint32_t blockSize)
     sys->_format = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(wfex);
     
     REFERENCE_TIME duration = (REFERENCE_TIME)((10'000'000.0 * blockSize) / sys->_format->Format.nSamplesPerSec);
-    sys->_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
+    hr = sys->_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
         AUDCLNT_STREAMFLAGS_RATEADJUST | AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
         duration, 0, &(sys->_format->Format), NULL);
+    if (FAILED(hr)) { return NULL; }
     
-    sys->_client->GetService(__uuidof(IAudioRenderClient), (void**)&(sys->_rc));
+    hr = sys->_client->GetService(__uuidof(IAudioRenderClient), (void**)&(sys->_rc));
+    if (FAILED(hr)) { return NULL; }
     
     hr = sys->_client->GetBufferSize(&(sys->_blockSize));
     if (FAILED(hr)) { return NULL; }
@@ -192,7 +206,7 @@ void* createAudioSystem(void* outputDevice, uint32_t blockSize)
     return sys;
 }
 
-bool trySetODName(audioOutDevice* dv, PROPVARIANT* property_variant, IPropertyStore* property_store, PROPERTYKEY key)
+bool trySetDevName(audioDevice* dv, PROPVARIANT* property_variant, IPropertyStore* property_store, PROPERTYKEY key)
 {
     HRESULT hr = property_store->GetValue(key, property_variant);
     if(FAILED(hr)) { return false; }
@@ -207,9 +221,9 @@ bool trySetODName(audioOutDevice* dv, PROPVARIANT* property_variant, IPropertySt
     WideCharToMultiByte(CP_UTF8, 0, name.c_str(), static_cast<int>(name.size()), (LPSTR)dv->_name.data(), static_cast<int>(dv->_name.size()), NULL, NULL);
     return true;
 }
-audioOutDevice* createOutDevice(IMMDevice* source)
+audioDevice* createDevice(IMMDevice* source)
 {
-    audioOutDevice* device = new audioOutDevice();
+    audioDevice* device = new audioDevice();
     device->_source = source;
     
     LPWSTR device_id = nullptr;
@@ -229,9 +243,9 @@ audioOutDevice* createOutDevice(IMMDevice* source)
         PROPVARIANT property_variant;
         PropVariantInit(&property_variant);
 
-        trySetODName(device, &property_variant, property_store, PKEY_Device_FriendlyName)
-            || trySetODName(device, &property_variant, property_store, PKEY_DeviceInterface_FriendlyName)
-            || trySetODName(device, &property_variant, property_store, PKEY_Device_DeviceDesc);
+        trySetDevName(device, &property_variant, property_store, PKEY_Device_FriendlyName)
+            || trySetDevName(device, &property_variant, property_store, PKEY_DeviceInterface_FriendlyName)
+            || trySetDevName(device, &property_variant, property_store, PKEY_Device_DeviceDesc);
 
         PropVariantClear(&property_variant);
     }
@@ -241,11 +255,11 @@ audioOutDevice* createOutDevice(IMMDevice* source)
 
 std::string getDeviceName(void* device)
 {
-    return ((audioOutDevice*)device)->_name;
+    return ((audioDevice*)device)->_name;
 }
 std::wstring getDeviceId(void* device)
 {
-    return ((audioOutDevice*)device)->_id;
+    return ((audioDevice*)device)->_id;
 }
 
 bool initialise(bool captures, void** deviceCollection)
@@ -276,7 +290,7 @@ bool initialise(bool captures, void** deviceCollection)
     IMMDevice* device = NULL;
     
     dc->_device_render_count = device_count;
-    dc->_device_render_array = new audioOutDevice*[device_count];
+    dc->_device_render_array = new audioDevice*[device_count];
     for (UINT i = 0; i < device_count; i++)
     {
         hr = device_collection->Item(i, &device);
@@ -289,7 +303,7 @@ bool initialise(bool captures, void** deviceCollection)
             continue;
         }
 
-        dc->_device_render_array[i] = createOutDevice(device);
+        dc->_device_render_array[i] = createDevice(device);
     }
     
     if (captures)
@@ -304,7 +318,7 @@ bool initialise(bool captures, void** deviceCollection)
         if (FAILED(hr)) { return false; }
         
         dc->_device_capture_count = device_count;
-        dc->_device_capture_array = new IMMDevice*[device_count];
+        dc->_device_capture_array = new audioDevice*[device_count];
         for (UINT i = 0; i < device_count; i++)
         {
             IMMDevice* device = NULL;
@@ -318,19 +332,20 @@ bool initialise(bool captures, void** deviceCollection)
                 continue;
             }
 
-            dc->_device_capture_array[i] = device;
+            dc->_device_capture_array[i] = createDevice(device);
         }
     }
     
     // Get defaults
     hr = enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &device);
     if (FAILED(hr)) { return false; }
-    dc->_device_render_default = createOutDevice(device);
+    dc->_device_render_default = createDevice(device);
     
     if (captures)
     {
-        hr = enumerator->GetDefaultAudioEndpoint(eCapture, eConsole, &(dc->_device_capture_default));
+        hr = enumerator->GetDefaultAudioEndpoint(eCapture, eConsole, &device);
         if (FAILED(hr)) { return false; }
+        dc->_device_capture_default = createDevice(device);
     }
     
     return true;
@@ -346,6 +361,16 @@ void** getOutputs(void* deviceCollection, int* size)
     return (void**)((deviceInitialiser*)deviceCollection)->_device_render_array;
 }
 
+void* getDefaultInput(void* deviceCollection)
+{
+    return ((deviceInitialiser*)deviceCollection)->_device_capture_default;
+}
+void** getInputs(void* deviceCollection, int* size)
+{
+    *size = ((deviceInitialiser*)deviceCollection)->_device_capture_count;
+    return (void**)((deviceInitialiser*)deviceCollection)->_device_capture_array;
+}
+
 void deleteInitialiser(void* deviceCollection)
 {
     deviceInitialiser* dc = (deviceInitialiser*)deviceCollection;
@@ -354,12 +379,14 @@ void deleteInitialiser(void* deviceCollection)
     for (int i = 0; i < dc->_device_render_count; i++)
     {
         dc->_device_render_array[i]->_source->Release();
+        delete dc->_device_render_array[i];
     }
     
     // Release capture devices
     for (int i = 0; i < dc->_device_capture_count; i++)
     {
-        dc->_device_capture_array[i]->Release();
+        dc->_device_capture_array[i]->_source->Release();
+        delete dc->_device_capture_array[i];
     }
     
     delete dc->_device_render_array;
@@ -377,4 +404,225 @@ void deleteAudioSystem(void* audioSys)
     
     CloseHandle(sys->_event);
     delete sys;
+}
+
+
+uint64_t getARSampleRate(void* audioRead)
+{
+    return ((audioReader*)audioRead)->_format->Format.nSamplesPerSec;
+}
+uint32_t getARBlockSize(void* audioRead)
+{
+    return ((audioReader*)audioRead)->_blockSize;
+}
+uint16_t getARNumChannels(void* audioRead)
+{
+    return ((audioReader*)audioRead)->_format->Format.nChannels;
+}
+
+void threadReadFunction(audioReader* reader)
+{
+    if (!reader->_buffer) { return; }
+    
+    IAudioCaptureClient* iacc = reader->_cc;
+    HRESULT hr;
+    
+    UINT32 next_packet_size = 0;
+    hr = iacc->GetNextPacketSize(&next_packet_size);
+    if (FAILED(hr)) { return; }
+    
+    while (next_packet_size != 0 )
+    {
+        DWORD flags = 0;
+        BYTE* data = NULL;
+        hr = iacc->GetBuffer(&data, &next_packet_size, &flags, NULL, NULL);
+        if (FAILED(hr)) { return; }
+        
+        UINT32 buffRead = next_packet_size * reader->_format->Format.nChannels;
+        
+        if (next_packet_size > reader->_buffer->_blockSize)
+        {
+            throw new std::overflow_error("Packet size ran over blcok size.");
+        }
+        
+        if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
+        {
+            data = NULL;
+        }
+        
+        float* block = reinterpret_cast<float*>(data);
+        readBuffer* buffer = reader->_buffer;
+        for (uint32_t i = 0; i < buffRead; i++)
+        {
+            float f = data ? block[i] : 0;
+            buffer->_data[buffer->_writeIndex] = f;
+            incBuffWrite(buffer);
+        }
+        
+        hr = iacc->ReleaseBuffer(next_packet_size);
+        if (FAILED(hr)) { return; }
+        
+        hr = iacc->GetNextPacketSize(&next_packet_size);
+        if (FAILED(hr)) { return; }
+    }
+}
+bool startAR(void* audioRead)
+{
+    audioReader* reader = (audioReader*)audioRead;
+    
+    if (reader->_running) { return false; }
+    
+    HRESULT hr = reader->_client->Start();
+    if (FAILED(hr)) { return false; }
+    
+    reader->_running = true;
+    
+    reader->_thread = std::thread{ [reader]()
+    {
+        SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+
+        while (reader->_running)
+        {
+            threadReadFunction(reader);
+            
+            // Wait
+            WaitForSingleObject(reader->_event, INFINITE);
+        }
+    } };
+    
+    return true;
+}
+bool isARRunning(void* audioRead)
+{
+    return ((audioReader*)audioRead)->_running;
+}
+void stopAR(void* audioRead)
+{
+    audioReader* read = (audioReader*)audioRead;
+    
+    if (!read->_running) { return; }
+    
+    read->_running = false;
+    if (read->_thread.joinable())
+    {
+        read->_thread.join();
+    }
+    read->_client->Stop();
+    read->_thread.~thread();
+}
+
+void setARBuffer(void* audioRead, readBuffer* buffer)
+{
+    audioReader* read = (audioReader*)audioRead;
+    read->_buffer = buffer;
+}
+
+void* getAudioReaderDevice(void* audioRead)
+{
+    return ((audioReader*)audioRead)->_device;
+}
+
+void* createAudioReader(void* inputDevice, uint32_t blockSize)
+{
+    audioReader* read = new audioReader();
+    read->_device = (audioDevice*)inputDevice;
+    
+    HRESULT hr;
+    IMMDevice* device = read->_device->_source;
+    
+    hr = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, NULL, (void**)&(read->_client));
+    if (FAILED(hr)) { return NULL; }
+    
+    WAVEFORMATEX* wfex = NULL;
+    hr = read->_client->GetMixFormat(&wfex);
+    if (FAILED(hr)) { return NULL; }
+    read->_format = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(wfex);
+    
+    REFERENCE_TIME duration = (REFERENCE_TIME)((10'000'000.0 * blockSize) / read->_format->Format.nSamplesPerSec);
+    hr = read->_client->Initialize(AUDCLNT_SHAREMODE_SHARED,
+        AUDCLNT_STREAMFLAGS_RATEADJUST | AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+        duration, 0, &(read->_format->Format), NULL);
+    if (FAILED(hr)) { return NULL; }
+    
+    hr = read->_client->GetService(__uuidof(IAudioCaptureClient), (void**)&(read->_cc));
+    if (FAILED(hr)) { return NULL; }
+    
+    hr = read->_client->GetBufferSize(&(read->_blockSize));
+    if (FAILED(hr)) { return NULL; }
+    
+    read->_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+    hr = read->_client->SetEventHandle(read->_event);
+    if (FAILED(hr)) { return NULL; }
+    
+    // Ensure using floating point samples
+    read->_format->SubFormat = KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
+    read->_format->Format.wBitsPerSample = sizeof(float) * 8;
+    read->_format->Samples.wValidBitsPerSample = read->_format->Format.wBitsPerSample;
+    fixup_format(read->_format);
+    
+    return read;
+}
+void deleteAudioReader(void* audioRead)
+{
+    audioReader* read = (audioReader*)audioRead;
+    
+    read->_cc->Release();
+    read->_client->Release();
+    //delete sys->_format;
+    
+    CloseHandle(read->_event);
+    delete read;
+}
+
+float* readAudioSource(void* audioRead, uint32_t size, uint32_t* sizeOut)
+{
+    audioReader* reader = (audioReader*)audioRead;
+    
+    IAudioCaptureClient* iacc = reader->_cc;
+    HRESULT hr;
+    /*
+    UINT32 next_packet_size = 0;
+    hr = iacc->GetNextPacketSize(&next_packet_size);
+    if (FAILED(hr)) { return NULL; }
+    
+    if (next_packet_size < size)
+    {
+        *sizeOut = next_packet_size;
+    }
+    else
+    {
+        *sizeOut = size;
+    }*/
+    
+    *sizeOut = size;
+    
+    DWORD flags = 0;
+    BYTE* data = NULL;
+    hr = iacc->GetBuffer(&data, sizeOut, &flags, NULL, NULL);
+    if (FAILED(hr)) { return NULL; }
+    
+    UINT32 buffRead = *sizeOut * reader->_format->Format.nChannels;
+    
+    if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
+    {
+        data = NULL;
+    }
+    if (data == NULL)
+    {
+        *sizeOut = size;
+    }
+    
+    float* block = reinterpret_cast<float*>(data);
+    float* ret = new float[buffRead];
+    for (uint32_t i = 0; i < buffRead; i++)
+    {
+        float f = data ? block[i] : 0;
+        ret[i] = f;
+        //incBuffWrite(buffer);
+    }
+    
+    hr = iacc->ReleaseBuffer(*sizeOut);
+    if (FAILED(hr)) { return NULL; }
+    
+    return ret;
 }

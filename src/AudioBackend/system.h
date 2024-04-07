@@ -1,7 +1,10 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdexcept>
 
-typedef void (*audioCallback)(float*, uint32_t, uint32_t, uint32_t);
+#include "readBuffer.h"
+
+typedef void (*audioCallback)(float*, uint32_t, uint32_t);
 
 uint64_t getASSampleRate(void* audioSys);
 uint32_t getASBlockSize(void* audioSys);
@@ -25,4 +28,24 @@ bool initialise(bool captures, void** deviceCollection);
 void* getDefaultOutput(void* deviceCollection);
 void** getOutputs(void* deviceCollection, int* size);
 
+void* getDefaultInput(void* deviceCollection);
+void** getInputs(void* deviceCollection, int* size);
+
 void deleteInitialiser(void* deviceCollection);
+
+
+uint64_t getARSampleRate(void* audioRead);
+uint32_t getARBlockSize(void* audioRead);
+uint16_t getARNumChannels(void* audioRead);
+
+bool startAR(void* audioRead);
+bool isARRunning(void* audioRead);
+void stopAR(void* audioRead);
+
+void setARBuffer(void* audioRead, readBuffer* buffer);
+
+float* readAudioSource(void* audioRead, uint32_t size, uint32_t* sizeOut);
+
+void* getAudioReaderDevice(void* audioRead);
+void* createAudioReader(void* inputDevice, uint32_t blockSize);
+void deleteAudioReader(void* audioRead);
