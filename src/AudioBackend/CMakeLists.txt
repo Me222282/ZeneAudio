@@ -8,4 +8,8 @@ project(AudioBackend CXX)
 # add_executable(main main.cpp ${HEADER_FILES})
 # target_include_directories(main PRIVATE ./)
 
+# windows test
 add_executable(main main.cpp wasapiSystem.cpp system.h)
+
+# linux test
+# add_executable(main linuxTest.cpp)
