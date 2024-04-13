@@ -9,14 +9,18 @@ project(AudioBackend CXX)
 # target_include_directories(main PRIVATE ./)
 
 # windows test
-# add_executable(main main.cpp wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
+if (WIN32)
+    add_executable(main main.cpp wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
+endif()
 
 # linux test
-add_executable(main linuxTest.cpp)
-#add_executable(main test.cpp)
+if (UNIX)
+    add_executable(main linuxTest.cpp)
+    # add_executable(main test.cpp)
 
-find_package(ALSA REQUIRED)                                    
-if (ALSA_FOUND)                                                
-    target_include_directories(main PRIVATE ${ALSA_INCLUDE_DIRS})                  
-    target_link_libraries (main ${ALSA_LIBRARIES})      
-endif(ALSA_FOUND) 
+    find_package(ALSA REQUIRED)                                    
+    if (ALSA_FOUND)                                                
+        target_include_directories(main PRIVATE ${ALSA_INCLUDE_DIRS})                  
+        target_link_libraries (main ${ALSA_LIBRARIES})      
+    endif(ALSA_FOUND) 
+endif()
