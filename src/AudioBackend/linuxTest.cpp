@@ -24,22 +24,15 @@ void fillBuffer(snd_pcm_t* pcm_handle, snd_pcm_uframes_t period)
         const char* ptr = snd_strerror(r);
         if (r < 0) { return; }
         
-        float* map[channels];
-        
-        for (unsigned int c = 0; c < channels; c++)
-        {
-            map[c] = (float*)((unsigned char *)areas[c].addr + (areas[c].first / 8) + (offset * (areas[c].step / 8)));
-        }
+        float* map = (float*)((unsigned char *)areas[0].addr + (areas[0].first / 8) + (offset * (areas[0].step / 8)));
         
         for (uint64_t i = 0; i < frames; i++)
         {
-            float v = sin(((pi2 * (float)phase * 2) / 44100) * 200) * 0.2f;
+            float v = sin(((pi2 * (float)phase * 2) / 44100) * 200) * 0.8f;
             phase++;
             
-            for (unsigned int c = 0; c < channels; c++)
-            {
-                map[c][i] = v;
-            }
+            map[i * 2] = v;
+            map[(i * 2) + 1] = v;
         }
         
         snd_pcm_mmap_commit(pcm_handle, offset, frames);
@@ -96,7 +89,7 @@ int main()
     if (e < 0) { return(-1); }
     e = snd_pcm_hw_params_set_rate_resample(pcm_handle, hwparams, 1);
     if (e < 0) { return(-1); }
-    e = snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_MMAP_NONINTERLEAVED);
+    e = snd_pcm_hw_params_set_access(pcm_handle, hwparams, SND_PCM_ACCESS_MMAP_INTERLEAVED);
     if (e < 0) { return(-1); }
     e = snd_pcm_hw_params_set_channels(pcm_handle, hwparams, channels);
     if (e < 0) { return(-1); }
