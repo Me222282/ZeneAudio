@@ -1,8 +1,0 @@
-{
-    "files.associations": {
-        "thread": "cpp",
-        "ratio": "cpp",
-        "cmath": "cpp",
-        "chrono": "cpp"
-    }
-}
