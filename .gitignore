@@ -3,3 +3,4 @@ bin/
 
 # c build directory
 src/AudioBackend/build/**
+.vscode/
