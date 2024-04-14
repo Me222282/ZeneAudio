@@ -79,7 +79,8 @@ int main()
     audioReader = createAudioReader(mic, 1024 * 2);
     buff = *createReadBuffer(getARBlockSize(audioReader) * 4 * getARNumChannels(audioReader));
     setARBuffer(audioReader, &buff);
-    printf("%s\n", getDeviceName(mic).c_str());
+    uint32_t tmp = 0;
+    printf("%s\n", getDeviceName(mic, &tmp));
     printf("%d\n", getARSampleRate(audioReader));
     
     int notes[8] = {
@@ -104,7 +105,7 @@ int main()
     stopAR(audioReader);
     
     deleteAudioSystem(audioSystem);
-    deleteAudioSystem(audioReader);
+    deleteAudioReader(audioReader);
     delete buff._data;
     deleteInitialiser(deviceCollection);
     return 0;

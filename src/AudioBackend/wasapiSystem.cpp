@@ -253,13 +253,17 @@ audioDevice* createDevice(IMMDevice* source)
     return device;
 }
 
-std::string getDeviceName(void* device)
+const char* getDeviceName(void* device, uint32_t* size)
 {
-    return ((audioDevice*)device)->_name;
+    audioDevice* ad = (audioDevice*)device;
+    *size = ad->_name.size();
+    return ad->_name.c_str();
 }
-std::wstring getDeviceId(void* device)
+const wchar_t* getDeviceId(void* device, uint32_t* size)
 {
-    return ((audioDevice*)device)->_id;
+    audioDevice* ad = (audioDevice*)device;
+    *size = ad->_id.size();
+    return ad->_id.c_str();
 }
 
 bool initialise(bool captures, void** deviceCollection)
@@ -272,7 +276,7 @@ bool initialise(bool captures, void** deviceCollection)
     auto_release<IMMDeviceEnumerator> releaseE{ enumerator };
     
     hr = CoInitialize(NULL);
-    if (FAILED(hr)) { return false; }
+    //if (FAILED(hr)) { return false; }
     
     hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), NULL, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&enumerator);
     if (FAILED(hr)) { return false; }

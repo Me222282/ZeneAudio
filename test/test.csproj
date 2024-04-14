@@ -1,9 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <RootNamespace>Zene.Audio</RootNamespace>
+    <RootNamespace>test</RootNamespace>
   </PropertyGroup>
+  
+  <!-- <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;IDE0090</NoWarn>
+  </PropertyGroup> -->
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -12,12 +17,9 @@
     </ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
     <NoWarn>1701;1702;IDE0090</NoWarn>
   </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
-      None
-    </ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
-  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\src\Audio.csproj" />
+  </ItemGroup>
   
 </Project>

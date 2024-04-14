@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>Zene.Audio</RootNamespace>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+      None
+    </ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+    <NoWarn>1701;1702;IDE0090</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+      None
+    </ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <!-- <None Update="deps\AUDIO.dylib">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="deps\AUDIO.so">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="deps\AUDIO.so.3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="deps\AUDIO.so.3.4">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None> -->
+    <None Update="deps\audio_wasapi.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  
+  <PropertyGroup Condition="'$(OS)'=='Windows_NT'">
+	<DefineConstants>WINDOWS</DefineConstants>
+  </PropertyGroup>
+	
+  <PropertyGroup Condition="'$(OS)'=='Unix'">
+	<DefineConstants>UNIX</DefineConstants>
+  </PropertyGroup>
+  
+</Project>
