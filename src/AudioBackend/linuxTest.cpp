@@ -76,8 +76,8 @@ int main()
         if (er < 0) { continue; }
         const char* name2 = snd_pcm_info_get_name(info);
         printf("%s\n", name2);
+        //snd_pcm_info_free(info);
         snd_pcm_close(pcm);
-        snd_pcm_info_free(info);
     }
     //Free hint buffer too
     snd_device_name_free_hint(hints);
@@ -139,19 +139,19 @@ int main()
     e = snd_pcm_hw_params(pcm_handle, hwparams);
     if (e < 0) { return(-1); }
     
-    e = snd_pcm_sw_params_current(pcm_handle, swparams);
-    if (e < 0) { return(-1); }
-    /* start the transfer when the buffer is almost full: */
-    /* (buffer_size / avail_min) * avail_min */
-    e = snd_pcm_sw_params_set_start_threshold(pcm_handle, swparams, (1024 / ps) * ps);
-    if (e < 0) { return(-1); }
-    /* allow the transfer when at least period_size samples can be processed */
-    /* or disable this mechanism when period event is enabled (aka interrupt like style processing) */
-    e = snd_pcm_sw_params_set_avail_min(pcm_handle, swparams, ps);
-    if (e < 0) { return(-1); }
-    /* write the parameters to the playback device */
-    e = snd_pcm_sw_params(pcm_handle, swparams);
-    if (e < 0) { return(-1); }
+    // e = snd_pcm_sw_params_current(pcm_handle, swparams);
+    // if (e < 0) { return(-1); }
+    // /* start the transfer when the buffer is almost full: */
+    // /* (buffer_size / avail_min) * avail_min */
+    // e = snd_pcm_sw_params_set_start_threshold(pcm_handle, swparams, (1024 / ps) * ps);
+    // if (e < 0) { return(-1); }
+    // /* allow the transfer when at least period_size samples can be processed */
+    // /* or disable this mechanism when period event is enabled (aka interrupt like style processing) */
+    // e = snd_pcm_sw_params_set_avail_min(pcm_handle, swparams, ps);
+    // if (e < 0) { return(-1); }
+    // /* write the parameters to the playback device */
+    // e = snd_pcm_sw_params(pcm_handle, swparams);
+    // if (e < 0) { return(-1); }
     
     snd_async_handler_t *ahandler;
     e = snd_async_add_pcm_handler(&ahandler, pcm_handle, threadFunc, NULL);
