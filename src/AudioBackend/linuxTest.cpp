@@ -65,9 +65,20 @@ int main()
         char* name = snd_device_name_get_hint(*n, "NAME");
         
         if (name == NULL) { continue; }
-        printf("%s", name);
+        char* t_name = strdup(name);
         free(name);
-
+        snd_pcm_t* pcm;
+        int er = snd_pcm_open(&pcm, t_name, SND_PCM_STREAM_PLAYBACK, 0);
+        if (er < 0) { continue; }
+        snd_pcm_info_t* info;
+        snd_pcm_info_alloca(&info);
+        er = snd_pcm_info(pcm, info);
+        if (er < 0) { continue; }
+        const char* name2 = snd_pcm_info_get_name(info);
+        printf("%s\n", name2);
+        snd_pcm_close(pcm);
+        snd_pcm_info_free(info);
+    }
     //Free hint buffer too
     snd_device_name_free_hint(hints);
     
