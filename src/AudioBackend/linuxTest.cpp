@@ -54,6 +54,23 @@ int main()
 {
     printf("test");
     
+    // device list name test
+    void** hints;
+    /* Enumerate sound devices */
+    int err = snd_device_name_hint(-1, "pcm", &hints);
+    if (err < 0) { return(-1); }
+
+    for (void** n = hints; *n != NULL; n++)
+    {
+        char* name = snd_device_name_get_hint(*n, "NAME");
+        
+        if (name == NULL) { continue; }
+        printf("%s", name);
+        free(name);
+
+    //Free hint buffer too
+    snd_device_name_free_hint(hints);
+    
     char* pcm_name = strdup("plughw:0,0");
     snd_pcm_hw_params_t* hwparams;
     snd_pcm_sw_params_t* swparams;
