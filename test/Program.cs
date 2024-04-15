@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using Zene.Audio;
+using Zene.Structs;
 
 namespace test
 {
@@ -44,29 +45,53 @@ namespace test
             IntPtr dc = IntPtr.Zero;
             bool g = AUDIO.Initialise(false, out dc);
             IntPtr device = AUDIO.GetDefaultOutput(dc);
-            IntPtr* array = AUDIO.GetOutputs(dc, out int size);
-            IntPtr audioSystem = AUDIO.CreateAudioSystem(device, 1024);
+            AudioSystem system = new AudioSystem(new AudioDevice(device, true), 1024);
             
-            int[] notes = new int[8] {
+            Source src = new Source();
+            system.Sources.Add(src);
+            
+            system.Start();
+            
+            while (src.NTimes < 8)
+            {
+                Thread.Sleep(1000);
+            }
+            system.Stop();
+            
+            system.Dispose();
+            AUDIO.DeleteInitialiser(dc);
+        }
+
+        private class Source : IAudioSource
+        {
+            public bool Stereo => false;
+            
+            private int[] _notes = new int[8] {
                 27, 31, 34, 38, 39, 38, 34, 31
             };
-            int bpm = 140 * 2;
+            private int _bpm = 140 * 2;
             
-            AUDIO.SetASCallback(audioSystem, Func);
+            private int _noteIndex = 0;
+            private double _tOffset = 0;
             
-            AUDIO.StartAS(audioSystem);
-            for (int i = 0; i < 8; i++)
+            public int NTimes { get; private set; }= 0;
+            
+            public Vector2 GetSample(double time)
             {
-                for (int j = 0; j < 8; j++)
+                if ((((time - _tOffset) / 60d) * _bpm) >= 1)
                 {
-                    _frequency = NoteToFreq(notes[j]);
-                    Thread.Sleep(60_000 / bpm);
+                    _tOffset = time;
+                    _noteIndex++;
+                    if (_noteIndex >= _notes.Length)
+                    {
+                        _noteIndex = 0;
+                        NTimes++;
+                    }
                 }
+                
+                double freq = NoteToFreq(_notes[_noteIndex]);
+                return Math.Sin((Math.PI * time * 2d) * freq * 2d) * 0.3f;
             }
-            AUDIO.StopAS(audioSystem);
-            
-            AUDIO.DeleteAudioSystem(audioSystem);
-            AUDIO.DeleteInitialiser(dc);
         }
     }
 }

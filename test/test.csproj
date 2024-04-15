@@ -20,6 +20,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\src\Audio.csproj" />
+    <ProjectReference Include="..\..\Structs\src\Structs.csproj" />
   </ItemGroup>
   
 </Project>
