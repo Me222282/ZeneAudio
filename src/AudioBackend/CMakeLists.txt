@@ -13,11 +13,13 @@ if (WIN32)
     # add_executable(main main.cpp wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
     add_library(audio_wasapi SHARED wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
     set_target_properties(audio_wasapi PROPERTIES PUBLIC_HEADER system.h)
+    target_compile_definitions(audio_wasapi PRIVATE WINDOWS)
 endif()
 
 # linux test
 if (UNIX)
-    add_executable(main linuxTest.cpp)
+    add_executable(main linuxTest.cpp system.h alsaSystem.cpp)
+    target_compile_definitions(main PRIVATE UNIX)
     # add_executable(main test.cpp)
 
     find_package(ALSA REQUIRED)                                    

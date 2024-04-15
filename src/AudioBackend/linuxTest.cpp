@@ -2,10 +2,13 @@
 // #include <thread>
 // #include <cmath.h>
 #include <stdio.h>
+#include <iostream>
 #include <alsa/asoundlib.h>
 #include <math.h>
 #include <pthread.h>
 #include <thread>
+
+#include "system.h"
 
 unsigned int channels = 2;
 const float pi2 = M_PI * 2;
@@ -52,55 +55,18 @@ void threadFunc(snd_async_handler_t* ahandler)
 
 int main()
 {
-    printf("test");
+    printf("test\n");
     
-    // device list name test
-    void** hints;
-    /* Enumerate sound devices */
-    int err = snd_device_name_hint(-1, "pcm", &hints);
-    if (err < 0) { return(-1); }
-
-    for (void** n = hints; *n != NULL; n++)
-    {
-        char* name = snd_device_name_get_hint(*n, "NAME");
-        
-        if (name == NULL) { continue; }
-        char* t_name = strdup(name);
-        free(name);
-        snd_pcm_t* pcm;
-        int er = snd_pcm_open(&pcm, t_name, SND_PCM_STREAM_PLAYBACK, 0);
-        if (er < 0) { continue; }
-        snd_pcm_info_t* info;
-        snd_pcm_info_alloca(&info);
-        er = snd_pcm_info(pcm, info);
-        if (er < 0) { continue; }
-        const char* name2 = snd_pcm_info_get_name(info);
-        printf("%s\n", name2);
-        //snd_pcm_info_free(info);
-        snd_pcm_close(pcm);
-    }
-    //Free hint buffer too
-    snd_device_name_free_hint(hints);
+    void* dc = NULL;
+    initialise(false, &dc);
     
-    char* pcm_name = strdup("plughw:0,0");
-    snd_pcm_hw_params_t* hwparams;
-    snd_pcm_sw_params_t* swparams;
-    snd_pcm_hw_params_alloca(&hwparams);
-    snd_pcm_sw_params_alloca(&swparams);
+    snd_pcm_hw_params_t* hwparams = (snd_pcm_hw_params_t*)calloc(1, snd_pcm_hw_params_sizeof());
+    //snd_pcm_sw_params_t* swparams = (snd_pcm_sw_params_t*)calloc(1, snd_pcm_sw_params_sizeof());
     
-    snd_pcm_t* pcm_handle;
-    
-    /* Open PCM. The last parameter of this function is the mode. */
-    /* If this is set to 0, the standard mode is used. Possible   */
-    /* other values are SND_PCM_NONBLOCK and SND_PCM_ASYNC.       */ 
-    /* If SND_PCM_NONBLOCK is used, read / write access to the    */
-    /* PCM device will return immediately. If SND_PCM_ASYNC is    */
-    /* specified, SIGIO will be emitted whenever a period has     */
-    /* been completely processed by the soundcard.                */
-    if (snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0) < 0) {
-        fprintf(stderr, "Error opening PCM device %s\n", pcm_name);
-        return(-1);
-    }
+    void* device = getDefaultOutput(dc);
+    uint32_t tmp = 0;
+    printf("%s\n", getDeviceName(device, &tmp));
+    snd_pcm_t* pcm_handle = *(snd_pcm_t**)device;
     
     if (snd_pcm_hw_params_any(pcm_handle, hwparams) < 0) {
         fprintf(stderr, "Can not configure this PCM device.\n");
@@ -188,7 +154,9 @@ int main()
     
     snd_pcm_drop(pcm_handle);
     
-    snd_pcm_close(pcm_handle);
+    //snd_pcm_close(pcm_handle);
+    
+    deleteInitialiser(dc);
     
     printf("\n");
     return 0;

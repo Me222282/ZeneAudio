@@ -4,7 +4,11 @@
 
 #include "readBuffer.h"
 
-#define DllExport   __declspec( dllexport )
+#if defined(WINDOWS)
+    #define DllExport   __declspec( dllexport )
+#else
+    #define DllExport
+#endif
 
 extern "C" {
 
