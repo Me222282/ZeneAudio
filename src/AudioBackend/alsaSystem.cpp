@@ -10,6 +10,16 @@ typedef struct
 
 typedef struct
 {
+    pcmDevice* _device;
+    uint32_t _sampleRate;
+    uint32_t _blockSize;
+    uint16_t _nChannels;
+    audioCallback _callback;
+    bool _running;
+} audioSystem;
+
+typedef struct
+{
     pcmDevice* _device_render_default;
     pcmDevice* _device_capture_default;
 
@@ -18,6 +28,140 @@ typedef struct
     pcmDevice** _device_capture_array;
     int _device_capture_count;
 } deviceInitialiser;
+
+uint64_t getASSampleRate(void* audioSys)
+{
+    return ((audioSystem*)audioSys)->_sampleRate;
+}
+uint32_t getASBlockSize(void* audioSys)
+{
+    return ((audioSystem*)audioSys)->_blockSize;
+}
+uint16_t getASNumChannels(void* audioSys)
+{
+    return ((audioSystem*)audioSys)->_nChannels;
+}
+
+void fillFrame(snd_pcm_t* pcm, audioCallback callback, uint16_t channels, snd_pcm_uframes_t size)
+{
+    snd_pcm_uframes_t frames;
+    while (size > 0)
+    {
+        frames = size;
+        
+        const snd_pcm_channel_area_t* areas = NULL;
+        snd_pcm_uframes_t offset = 0;
+        int r = snd_pcm_mmap_begin(pcm, &areas, &offset, &frames);
+        if (r < 0 || frames <= 0) { return; }
+        
+        float* map = (float*)((unsigned char *)areas[0].addr + (areas[0].first / 8) + (offset * (areas[0].step / 8)));
+        
+        callback(map, frames, channels);
+        
+        snd_pcm_mmap_commit(pcm, offset, frames);
+        
+        size -= frames;
+    }
+}
+void renderThreadFunc(snd_async_handler_t* ahandler)
+{
+    snd_pcm_t* pcm_handle = snd_async_handler_get_pcm(ahandler);
+    snd_pcm_uframes_t period = (snd_pcm_uframes_t)snd_pcm_avail_update(pcm_handle);
+    audioSystem* sys = (audioSystem*)snd_async_handler_get_callback_private(ahandler);
+    fillFrame(pcm_handle, sys->_callback, sys->_nChannels, period);
+}
+
+bool startAS(void* audioSys)
+{
+    audioSystem* sys = (audioSystem*)audioSys;
+    
+    if (sys->_running) { return false; }
+    
+    fillFrame(sys->_device->_handle, sys->_callback, sys->_nChannels, sys->_blockSize);
+    
+    int e = snd_pcm_start(sys->_device->_handle);
+    if (e < 0) { return false; }
+    
+    sys->_running = true;
+    return true;
+}
+bool isASRunning(void* audioSys)
+{
+    return ((audioSystem*)audioSys)->_running;
+}
+void stopAS(void* audioSys)
+{
+    audioSystem* sys = (audioSystem*)audioSys;
+    
+    if (!sys->_running) { return; }
+    
+    snd_pcm_drop(sys->_device->_handle);
+    sys->_running = false;
+}
+
+void setASCallback(void* audioSys, audioCallback callback)
+{
+    ((audioSystem*)audioSys)->_callback = callback;
+}
+
+void* getAudioSystemDevice(void* audioSys)
+{
+    return *(pcmDevice**)audioSys;
+}
+void* createAudioSystem(void* outputDevice, uint32_t blockSize)
+{
+    pcmDevice* device = (pcmDevice*)outputDevice;
+    snd_pcm_t* pcm = device->_handle;
+    
+    snd_pcm_hw_params_t* hwparams = (snd_pcm_hw_params_t*)calloc(1, snd_pcm_hw_params_sizeof());
+    
+    int e = snd_pcm_hw_params_any(pcm, hwparams);
+    if (e < 0) { return NULL; }
+    
+    snd_pcm_chmap_query_t** cm = snd_pcm_query_chmaps(pcm);
+    uint32_t channels = cm[0]->map.channels;
+    
+    e = snd_pcm_hw_params_set_format(pcm, hwparams, SND_PCM_FORMAT_FLOAT_LE);
+    if (e < 0) { return NULL; }
+    e = snd_pcm_hw_params_set_rate_resample(pcm, hwparams, false);
+    if (e < 0) { return NULL; }
+    e = snd_pcm_hw_params_set_access(pcm, hwparams, SND_PCM_ACCESS_MMAP_INTERLEAVED);
+    if (e < 0) { return NULL; }
+    e = snd_pcm_hw_params_set_channels(pcm, hwparams, channels);
+    if (e < 0) { return NULL; }
+    uint32_t rate = 44100;
+    e = snd_pcm_hw_params_set_rate_near(pcm, hwparams, &rate, NULL);
+    if (e < 0) { return NULL; }
+    //e = snd_pcm_hw_params_set_buffer_size(pcm_handle, hwparams, 1024);
+    e = snd_pcm_hw_params_set_buffer_size_near(pcm, hwparams, (snd_pcm_uframes_t*)&blockSize);
+    if (e < 0) { return NULL; }
+    snd_pcm_uframes_t ps = blockSize * sizeof(float) * 2;
+    e = snd_pcm_hw_params_set_period_size_near(pcm, hwparams, &ps, NULL);
+    if (e < 0) { return NULL; }
+    
+    e = snd_pcm_hw_params(pcm, hwparams);
+    if (e < 0) { return NULL; }
+    
+    audioSystem* sys = new audioSystem();
+    sys->_device = device;
+    sys->_sampleRate = rate;
+    sys->_nChannels = channels;
+    sys->_blockSize = blockSize;
+    
+    snd_async_handler_t *ahandler;
+    e = snd_async_add_pcm_handler(&ahandler, device->_handle, renderThreadFunc, sys);
+    if (e < 0)
+    {
+        deleteAudioSystem(sys);
+        return NULL;
+    }
+    
+    return sys;
+}
+void deleteAudioSystem(void* audioSys)
+{
+    delete (audioSystem*)audioSys;
+}
 
 const char* getDeviceName(void* device, uint32_t* size)
 {

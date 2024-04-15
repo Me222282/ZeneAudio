@@ -26,7 +26,7 @@ namespace test
             {
                 _phase++;
                 
-                float v = (float)Math.Sin(((Math.PI * _phase * 2d) / 44100d) * _frequency) * 0.3f;
+                float v = (float)Math.Sin(((Math.PI * _phase * 2d) / 44100d) * _frequency * 2d) * 0.3f;
                 // Read twice for both channels
                 /*float v = source[readPoint];
                 readPoint++;

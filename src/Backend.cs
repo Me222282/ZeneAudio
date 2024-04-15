@@ -9,7 +9,7 @@ namespace Zene.Audio
 #if WINDOWS
 		private const string LinkLibrary = "deps/audio_wasapi";
 #elif UNIX
-		private const string LinkLibrary = "deps/audio_alsa";
+		private const string LinkLibrary = "deps/audio_alsa.so";
 #endif
     
         [UnmanagedFunctionPointer(CallingConvention.Cdecl), SuppressUnmanagedCodeSecurity]

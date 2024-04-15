@@ -18,13 +18,15 @@ endif()
 
 # linux test
 if (UNIX)
-    add_executable(main linuxTest.cpp system.h alsaSystem.cpp)
-    target_compile_definitions(main PRIVATE UNIX)
+    # add_executable(main linuxTest.cpp system.h alsaSystem.cpp)
+    add_library(audio_alsa SHARED alsaSystem.cpp system.h)
+    set_target_properties(audio_alsa PROPERTIES PUBLIC_HEADER system.h)
+    target_compile_definitions(audio_alsa PRIVATE UNIX)
     # add_executable(main test.cpp)
-
-    find_package(ALSA REQUIRED)                                    
-    if (ALSA_FOUND)                                                
-        target_include_directories(main PRIVATE ${ALSA_INCLUDE_DIRS})                  
-        target_link_libraries (main ${ALSA_LIBRARIES})      
-    endif(ALSA_FOUND) 
+    
+    find_package(ALSA REQUIRED)
+    if (ALSA_FOUND)
+        target_include_directories(audio_alsa PRIVATE ${ALSA_INCLUDE_DIRS})                  
+        target_link_libraries(audio_alsa ${ALSA_LIBRARIES})      
+    endif(ALSA_FOUND)
 endif()

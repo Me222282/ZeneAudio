@@ -21,19 +21,10 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <!-- <None Update="deps\AUDIO.dylib">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="deps\AUDIO.so">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="deps\AUDIO.so.3">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="deps\AUDIO.so.3.4">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None> -->
     <None Update="deps\audio_wasapi.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="deps\audio_alsa.so">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
