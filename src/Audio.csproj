@@ -29,6 +29,10 @@
     </None>
   </ItemGroup>
   
+  <ItemGroup>
+    <ProjectReference Include="..\..\Structs\src\Structs.csproj" />
+  </ItemGroup>
+  
   <PropertyGroup Condition="'$(OS)'=='Windows_NT'">
 	<DefineConstants>WINDOWS</DefineConstants>
   </PropertyGroup>
