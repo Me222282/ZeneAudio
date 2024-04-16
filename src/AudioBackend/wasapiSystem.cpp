@@ -256,13 +256,19 @@ audioDevice* createDevice(IMMDevice* source)
 const char* getDeviceName(void* device, uint32_t* size)
 {
     audioDevice* ad = (audioDevice*)device;
-    *size = ad->_name.size();
+    if (size)
+    {
+        *size = ad->_name.size();
+    }
     return ad->_name.c_str();
 }
 const wchar_t* getDeviceId(void* device, uint32_t* size)
 {
     audioDevice* ad = (audioDevice*)device;
-    *size = ad->_id.size();
+    if (size)
+    {
+        *size = ad->_id.size();
+    }
     return ad->_id.c_str();
 }
 
@@ -361,7 +367,10 @@ void* getDefaultOutput(void* deviceCollection)
 }
 void** getOutputs(void* deviceCollection, int* size)
 {
-    *size = ((deviceInitialiser*)deviceCollection)->_device_render_count;
+    if (size)
+    {
+        *size = ((deviceInitialiser*)deviceCollection)->_device_render_count;
+    }
     return (void**)((deviceInitialiser*)deviceCollection)->_device_render_array;
 }
 
@@ -371,7 +380,10 @@ void* getDefaultInput(void* deviceCollection)
 }
 void** getInputs(void* deviceCollection, int* size)
 {
-    *size = ((deviceInitialiser*)deviceCollection)->_device_capture_count;
+    if (size)
+    {
+        *size = ((deviceInitialiser*)deviceCollection)->_device_capture_count;
+    }
     return (void**)((deviceInitialiser*)deviceCollection)->_device_capture_array;
 }
 
