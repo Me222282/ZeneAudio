@@ -4,7 +4,7 @@ using System.Security;
 
 namespace Zene.Audio
 {
-    public unsafe static class AUDIO
+    internal unsafe static class AUDIO
     {
 #if WINDOWS
 		private const string LinkLibrary = "deps/audio_wasapi";

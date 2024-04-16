@@ -5,11 +5,11 @@ namespace Zene.Audio
 {
     public class AudioDevice
     {
-        // TEMP
-        public AudioDevice(IntPtr handle, bool output)
+        internal AudioDevice(IntPtr handle, bool output)
         {
             _handle = handle;
             Output = output;
+            // Add name and id setting
         }
         
         internal IntPtr _handle;

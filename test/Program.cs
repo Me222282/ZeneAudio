@@ -12,40 +12,9 @@ namespace test
             return 27.5f * Math.Pow(2.0f, n / 12.0f);
         }
         
-        static uint _phase = 0;
-        static double _frequency = 0;
-        static unsafe void Func(float* block, uint size, uint nChannels)
-        {
-            /*
-            uint32_t avai = 0;
-            float* source = readAudioSource(audioReader, size, &avai);
-            // 2 channels
-            avai *= 2;
-            
-            uint32_t readPoint = 0;*/
-            for (uint i = 0; i < size; i++)
-            {
-                _phase++;
-                
-                float v = (float)Math.Sin(((Math.PI * _phase * 2d) / 44100d) * _frequency * 2d) * 0.3f;
-                // Read twice for both channels
-                /*float v = source[readPoint];
-                readPoint++;
-                v += source[readPoint];
-                readPoint++;*/
-                
-                //block[i] = sin(((M_PI * i * 2) / 44100) * 200) * 0.2f;
-                block[i * 2] = v;
-                block[(i * 2) + 1] = v;
-            }
-        }
-        
         static unsafe void Main(string[] args)
         {
-            IntPtr dc = IntPtr.Zero;
-            bool g = AUDIO.Initialise(false, out dc);
-            IntPtr device = AUDIO.GetDefaultOutput(dc);
-            AudioSystem system = new AudioSystem(new AudioDevice(device, true), 1024);
+            AudioSystem system = new AudioSystem(Initialiser.DefaultOutput, 1024);
             
             Source src = new Source();
             system.Sources.Add(src);
@@ -59,7 +28,7 @@ namespace test
             system.Stop();
             
             system.Dispose();
-            AUDIO.DeleteInitialiser(dc);
+            Initialiser.Terminate();
         }
 
         private class Source : Oscillator
