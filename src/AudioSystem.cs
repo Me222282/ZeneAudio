@@ -15,13 +15,15 @@ namespace Zene.Audio
             }
             
             _handle = AUDIO.CreateAudioSystem(device._handle, (uint)blockSize);
-            AUDIO.SetASCallback(_handle, Callback);
+            _callback = Callback;
+            AUDIO.SetASCallback(_handle, _callback);
             
             Stereo = AUDIO.GetASNumChannels(_handle) > 1;
             _tOffset = 1d / SampleRate;
         }
         
         private IntPtr _handle;
+        private readonly AUDIO.Callback _callback;
         
         public bool Stereo { get; }
         public List<IAudioSource> Sources { get; } = new List<IAudioSource>();
