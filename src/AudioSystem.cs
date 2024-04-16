@@ -27,6 +27,7 @@ namespace Zene.Audio
         public List<IAudioSource> Sources { get; } = new List<IAudioSource>();
         
         public long SampleRate => (long)AUDIO.GetASSampleRate(_handle);
+        public double Gain { get; set; }
         
         public bool Running => AUDIO.IsASRunning(_handle);
         
@@ -46,7 +47,7 @@ namespace Zene.Audio
                 Vector2 sample = Vector2.Zero;
                 for (int s = 0; s < nSrcs; s++)
                 {
-                    IAudioSource src = srcs[0];
+                    IAudioSource src = srcs[s];
                     Vector2 srcV = src.GetSample(_currentTime);
                     
                     if (src.Stereo)
@@ -59,6 +60,11 @@ namespace Zene.Audio
                 }
                 
                 _currentTime += _tOffset;
+                
+                sample *= Gain;
+                sample = new Vector2(
+                    Math.Clamp(sample.X, -1d, 1d),
+                    Math.Clamp(sample.Y, -1d, 1d));
                 
                 if (channels < 2)
                 {

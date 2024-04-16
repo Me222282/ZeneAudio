@@ -2,7 +2,7 @@ using System;
 
 namespace Zene.Audio
 {
-    public static class Initialiser
+    public static class Devices
     {
         private static IntPtr _handle;
         
@@ -12,7 +12,7 @@ namespace Zene.Audio
         public static AudioDevice DefaultInput { get; }
         public static AudioDevice[] Inputs { get; }
         
-        static unsafe Initialiser()
+        static unsafe Devices()
         {
             AUDIO.Initialise(false, out _handle);
             

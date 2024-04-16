@@ -14,7 +14,7 @@ namespace test
         
         static unsafe void Main(string[] args)
         {
-            AudioSystem system = new AudioSystem(Initialiser.DefaultOutput, 1024);
+            AudioSystem system = new AudioSystem(Devices.DefaultOutput, 1024);
             
             Source src = new Source();
             system.Sources.Add(src);
@@ -28,7 +28,7 @@ namespace test
             system.Stop();
             
             system.Dispose();
-            Initialiser.Terminate();
+            Devices.Terminate();
         }
 
         private class Source : Oscillator

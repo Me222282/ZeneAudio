@@ -7,6 +7,7 @@ namespace Zene.Audio
     {
         public bool Stereo { get; }
         public long SampleRate { get; }
+        public double Gain { get; set; }
         public List<IAudioSource> Sources { get; }
         
         public bool Running { get; }
