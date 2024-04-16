@@ -62,9 +62,13 @@ namespace test
             AUDIO.DeleteInitialiser(dc);
         }
 
-        private class Source : IAudioSource
+        private class Source : Oscillator
         {
-            public bool Stereo => false;
+            public Source()
+                : base(400, Oscillator.Sin)
+            {
+                Frequency = 2d * NoteToFreq(_notes[_noteIndex]);
+            }
             
             private int[] _notes = new int[8] {
                 27, 31, 34, 38, 39, 38, 34, 31
@@ -76,7 +80,7 @@ namespace test
             
             public int NTimes { get; private set; }= 0;
             
-            public Vector2 GetSample(double time)
+            public override Vector2 GetSample(double time)
             {
                 if ((((time - _tOffset) / 60d) * _bpm) >= 1)
                 {
@@ -87,10 +91,11 @@ namespace test
                         _noteIndex = 0;
                         NTimes++;
                     }
+                    
+                    Frequency = 2d * NoteToFreq(_notes[_noteIndex]);
                 }
                 
-                double freq = NoteToFreq(_notes[_noteIndex]);
-                return Math.Sin((Math.PI * time * 2d) * freq * 2d) * 0.3f;
+                return base.GetSample(time);
             }
         }
     }
