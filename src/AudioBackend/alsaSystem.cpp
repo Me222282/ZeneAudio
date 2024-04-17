@@ -44,6 +44,8 @@ uint16_t getASNumChannels(void* audioSys)
 
 void fillFrame(snd_pcm_t* pcm, audioCallback callback, uint16_t channels, snd_pcm_uframes_t size)
 {
+    if (!callback) { return; }
+    
     snd_pcm_uframes_t frames;
     while (size > 0)
     {
