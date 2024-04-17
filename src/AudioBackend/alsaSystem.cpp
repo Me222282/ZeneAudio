@@ -11,6 +11,7 @@ typedef struct
 typedef struct
 {
     pcmDevice* _device;
+    snd_pcm_hw_params_t* _hwparams;
     uint32_t _sampleRate;
     uint32_t _blockSize;
     uint16_t _nChannels;
@@ -65,11 +66,12 @@ void fillFrame(snd_pcm_t* pcm, audioCallback callback, uint16_t channels, snd_pc
         size -= frames;
     }
 }
+
 void renderThreadFunc(snd_async_handler_t* ahandler)
 {
     snd_pcm_t* pcm_handle = snd_async_handler_get_pcm(ahandler);
-    snd_pcm_uframes_t period = (snd_pcm_uframes_t)snd_pcm_avail_update(pcm_handle);
     audioSystem* sys = (audioSystem*)snd_async_handler_get_callback_private(ahandler);
+    snd_pcm_uframes_t period = (snd_pcm_uframes_t)snd_pcm_avail_update(pcm_handle);
     fillFrame(pcm_handle, sys->_callback, sys->_nChannels, period);
 }
 
@@ -115,7 +117,8 @@ void* createAudioSystem(void* outputDevice, uint32_t blockSize)
     pcmDevice* device = (pcmDevice*)outputDevice;
     snd_pcm_t* pcm = device->_handle;
     
-    snd_pcm_hw_params_t* hwparams = (snd_pcm_hw_params_t*)calloc(1, snd_pcm_hw_params_sizeof());
+    snd_pcm_hw_params_t* hwparams;
+    snd_pcm_hw_params_malloc(&hwparams);
     
     int e = snd_pcm_hw_params_any(pcm, hwparams);
     if (e < 0) { return NULL; }
@@ -149,6 +152,7 @@ void* createAudioSystem(void* outputDevice, uint32_t blockSize)
     sys->_sampleRate = rate;
     sys->_nChannels = channels;
     sys->_blockSize = blockSize;
+    sys->_hwparams = hwparams;
     
     snd_async_handler_t *ahandler;
     e = snd_async_add_pcm_handler(&ahandler, device->_handle, renderThreadFunc, sys);
@@ -162,6 +166,7 @@ void* createAudioSystem(void* outputDevice, uint32_t blockSize)
 }
 void deleteAudioSystem(void* audioSys)
 {
+    snd_pcm_hw_params_free(((audioSystem*)audioSys)->_hwparams);
     delete (audioSystem*)audioSys;
 }
 
@@ -200,7 +205,7 @@ bool initialise(bool captures, void** deviceCollection)
         err = snd_pcm_open(&pcm, t_name, SND_PCM_STREAM_PLAYBACK, 0);
         if (err < 0) { continue; }
         snd_pcm_info_t* info;
-        snd_pcm_info_alloca(&info);
+        snd_pcm_info_malloc(&info);
         err = snd_pcm_info(pcm, info);
         
         pcmDevice* device = new pcmDevice();
@@ -270,6 +275,7 @@ void deleteInitialiser(void* deviceCollection)
     // Release render devices
     for (int i = 0; i < dc->_device_render_count; i++)
     {
+        snd_pcm_info_free(dc->_device_render_array[i]->_info);
         snd_pcm_close(dc->_device_render_array[i]->_handle);
         delete dc->_device_render_array[i];
     }
@@ -277,6 +283,7 @@ void deleteInitialiser(void* deviceCollection)
     // Release capture devices
     for (int i = 0; i < dc->_device_capture_count; i++)
     {
+        snd_pcm_info_free(dc->_device_capture_array[i]->_info);
         snd_pcm_close(dc->_device_capture_array[i]->_handle);
         delete dc->_device_capture_array[i];
     }
