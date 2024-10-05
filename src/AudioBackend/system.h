@@ -51,6 +51,7 @@ DllExport bool isARRunning(void* audioRead);
 DllExport void stopAR(void* audioRead);
 
 DllExport void setARBuffer(void* audioRead, readBuffer* buffer);
+DllExport void setARCallback(void* audioRead, audioCallback callback);
 
 DllExport float* readAudioSource(void* audioRead, uint32_t size, uint32_t* sizeOut);
 

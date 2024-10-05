@@ -14,7 +14,7 @@ namespace Zene.Audio
         
         static unsafe Devices()
         {
-            AUDIO.Initialise(false, out _handle);
+            AUDIO.Initialise(true, out _handle);
             
             // Outputs
             IntPtr defOut = AUDIO.GetDefaultOutput(_handle);
@@ -34,17 +34,17 @@ namespace Zene.Audio
             }
             
             // Inputs
-            IntPtr defIn = AUDIO.GetDefaultOutput(_handle);
+            IntPtr defIn = AUDIO.GetDefaultInput(_handle);
             DefaultInput = new AudioDevice(defIn, false);
             
-            IntPtr* ins = AUDIO.GetOutputs(_handle, out int numIns);
+            IntPtr* ins = AUDIO.GetInputs(_handle, out int numIns);
             Inputs = new AudioDevice[numIns];
             for (int i = 0; i < numIns; i++)
             {
                 IntPtr ptr = ins[i];
                 if (ptr == IntPtr.Zero)
                 {
-                    Outputs[i] = null;
+                    Inputs[i] = null;
                     continue;
                 }
                 Inputs[i] = new AudioDevice(ptr, false);

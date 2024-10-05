@@ -59,5 +59,30 @@ namespace Zene.Audio
         
         [DllImport(LinkLibrary, EntryPoint = "deleteInitialiser", CallingConvention = CallingConvention.Cdecl)]
         public static extern void DeleteInitialiser(IntPtr deviceCollection);
+        
+        
+        [DllImport(LinkLibrary, EntryPoint = "getARSampleRate", CallingConvention = CallingConvention.Cdecl)]
+        public static extern ulong GetARSampleRate(IntPtr audioRead);
+        [DllImport(LinkLibrary, EntryPoint = "getARBlockSize", CallingConvention = CallingConvention.Cdecl)]
+        public static extern ulong GetARBlockSize(IntPtr audioRead);
+        [DllImport(LinkLibrary, EntryPoint = "getARNumChannels", CallingConvention = CallingConvention.Cdecl)]
+        public static extern ulong GetARNumChannels(IntPtr audioRead);
+        
+        [DllImport(LinkLibrary, EntryPoint = "startAR", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool StartAR(IntPtr audioRead);
+        [DllImport(LinkLibrary, EntryPoint = "isARRunning", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool IsARRunning(IntPtr audioRead);
+        [DllImport(LinkLibrary, EntryPoint = "stopAR", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void StopAR(IntPtr audioRead);
+        
+        [DllImport(LinkLibrary, EntryPoint = "setARCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void SetARCallback(IntPtr audioRead, Callback callback);
+        
+        [DllImport(LinkLibrary, EntryPoint = "getAudioReaderDevice", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr GetAudioReaderDevice(IntPtr audioRead);
+        [DllImport(LinkLibrary, EntryPoint = "createAudioReader", CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr CreateAudioReader(IntPtr inputDevice, uint blockSize);
+        [DllImport(LinkLibrary, EntryPoint = "deleteAudioReader", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void DeleteAudioReader(IntPtr audioRead);
     }
 }

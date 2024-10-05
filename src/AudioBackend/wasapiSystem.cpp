@@ -60,6 +60,7 @@ typedef struct
     uint32_t _blockSize;
     bool _running;
     readBuffer* _buffer;
+    audioCallback _callback;
     std::thread _thread;
 } audioReader;
 
@@ -436,9 +437,15 @@ uint16_t getARNumChannels(void* audioRead)
     return ((audioReader*)audioRead)->_format->Format.nChannels;
 }
 
+void setARCallback(void* audioRead, audioCallback callback)
+{
+    ((audioReader*)audioRead)->_callback = callback;
+}
+
 void threadReadFunction(audioReader* reader)
 {
-    if (!reader->_buffer) { return; }
+    audioCallback callback = reader->_callback;
+    if (!reader->_buffer && !callback) { return; }
     
     IAudioCaptureClient* iacc = reader->_cc;
     HRESULT hr;
@@ -447,18 +454,20 @@ void threadReadFunction(audioReader* reader)
     hr = iacc->GetNextPacketSize(&next_packet_size);
     if (FAILED(hr)) { return; }
     
-    while (next_packet_size != 0 )
+    WORD nChannels = reader->_format->Format.nChannels;
+    
+    while (next_packet_size != 0)
     {
         DWORD flags = 0;
         BYTE* data = NULL;
         hr = iacc->GetBuffer(&data, &next_packet_size, &flags, NULL, NULL);
         if (FAILED(hr)) { return; }
         
-        UINT32 buffRead = next_packet_size * reader->_format->Format.nChannels;
+        UINT32 buffRead = next_packet_size * nChannels;
         
-        if (next_packet_size > reader->_buffer->_blockSize)
+        if (reader->_buffer && next_packet_size > reader->_buffer->_blockSize)
         {
-            throw new std::overflow_error("Packet size ran over blcok size.");
+            throw new std::overflow_error("Packet size ran over block size.");
         }
         
         if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
@@ -467,12 +476,20 @@ void threadReadFunction(audioReader* reader)
         }
         
         float* block = reinterpret_cast<float*>(data);
-        readBuffer* buffer = reader->_buffer;
-        for (uint32_t i = 0; i < buffRead; i++)
+        if (callback)
         {
-            float f = data ? block[i] : 0;
-            buffer->_data[buffer->_writeIndex] = f;
-            incBuffWrite(buffer);
+            callback(block, next_packet_size, nChannels);
+        }
+        
+        if (reader->_buffer)
+        {
+            readBuffer* buffer = reader->_buffer;
+            for (uint32_t i = 0; i < buffRead; i++)
+            {
+                float f = data ? block[i] : 0;
+                buffer->_data[buffer->_writeIndex] = f;
+                incBuffWrite(buffer);
+            }
         }
         
         hr = iacc->ReleaseBuffer(next_packet_size);

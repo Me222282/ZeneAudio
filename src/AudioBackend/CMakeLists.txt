@@ -10,7 +10,7 @@ project(AudioBackend CXX)
 
 # windows test
 if (WIN32)
-    # add_executable(main main.cpp wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
+    # add_executable(audio_wasapi main.cpp wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
     add_library(audio_wasapi SHARED wasapiSystem.cpp system.h readBuffer.h readBuffer.cpp)
     set_target_properties(audio_wasapi PROPERTIES PUBLIC_HEADER system.h)
     target_compile_definitions(audio_wasapi PRIVATE WINDOWS)
